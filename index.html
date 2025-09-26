@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Training Timer</title>
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        background: #000;
+        color: #fff;
+        font-family: Arial, Helvetica, sans-serif;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .gradient-bg {
+        position: fixed; inset: 0; z-index: -2;
+        background: linear-gradient(135deg, #163C9F, #5EB3DB);
+        background-size: 200% 200%;
+        animation: gradientShift 12s ease-in-out infinite alternate;
+      }
+      @keyframes gradientShift {
+        0% { background-position: 0% 0%; }
+        100% { background-position: 100% 100%; }
+      }
+
+      .video-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; display: none; }
+      .video-bg iframe { position: absolute; top: 50%; left: 50%; width: 120vw; height: 120vh; transform: translate(-50%, -50%); pointer-events: none; }
+
+      #logo { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 150px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6)); }
+
+      .wrap {
+        backdrop-filter: blur(2px);
+        background: rgba(0,0,0,0.3);
+        padding: 30px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+        max-width: 850px; width: min(92vw, 850px);
+      }
+      h1 { margin-bottom: 20px; font-size: 42px; }
+
+      .controls { margin: 10px 0; display: inline-flex; gap: 8px; align-items: center; }
+      .controls label { font-weight: 600; }
+      .controls input[type="text"], .controls input[type="time"] { padding: 8px 10px; border-radius: 6px; border: none; }
+      .controls button { padding: 8px 14px; border: none; border-radius: 6px; background: #0099ff; color: #fff; font-weight: bold; cursor: pointer; }
+
+      .profile img { width: 260px; border-radius: 12px; box-shadow: 0 10px 22px rgba(0,0,0,0.7); }
+      .profile h3, .profile h2 { margin: 8px 0 0; }
+
+      #countdown ul { display: flex; justify-content: center; gap: 30px; list-style: none; padding: 0; }
+      #countdown li span { display: block; font-size: 56px; font-weight: 900; }
+      #starting h3 { font-size: 36px; margin-top: 20px; }
+    </style>
+  </head>
+  <body>
+    <div class="gradient-bg" id="gradient"></div>
+    <div class="video-bg" id="videoBg"><div id="player"></div></div>
+
+    <div class="wrap">
+      <h1 id="headline"></h1>
+
+      <div id="title-controls" class="controls">
+        <label>Meeting Title:</label>
+        <input type="text" id="training-title" placeholder="Enter title" />
+        <button id="title-btn">Set</button>
+      </div>
+
+      <div class="profile">
+        <img src="me.jpeg" alt="Presenter" />
+        <h3><b>Jordan Smith</b></h3>
+        <h2>AVP Sales Support</h2>
+      </div>
+
+      <div id="time-controls" class="controls">
+        <label>Meeting Time:</label>
+        <input type="time" id="training-time" />
+        <button id="time-btn">Start</button>
+      </div>
+
+      <!-- Yes/No buttons for video background -->
+      <div id="video-toggle" class="controls">
+        <label>Use Video Background?</label>
+        <button id="video-yes">Yes</button>
+        <button id="video-no">No</button>
+      </div>
+
+      <div id="video-controls" class="controls" style="display:none;">
+        <label>YouTube URL:</label>
+        <input type="text" id="video-url" placeholder="Paste YouTube link" />
+        <button id="video-btn">Set Video</button>
+      </div>
+
+      <section id="countdown" style="display:none;">
+        <h4>Starting In</h4>
+        <ul>
+          <li><span id="hours">00</span>Hours</li>
+          <li><span id="minutes">00</span>Minutes</li>
+          <li><span id="seconds">00</span>Seconds</li>
+        </ul>
+      </section>
+      <section id="starting" style="display:none;">
+        <h3>Starting Now</h3>
+      </section>
+    </div>
+
+    <img id="logo" src="centerwell_logo PNG.png" alt="CenterWell" />
+
+    <script>
+      const el = {
+        headline: document.getElementById('headline'),
+        titleInput: document.getElementById('training-title'),
+        timeInput: document.getElementById('training-time'),
+        titleBtn: document.getElementById('title-btn'),
+        timeBtn: document.getElementById('time-btn'),
+        countdown: document.getElementById('countdown'),
+        starting: document.getElementById('starting'),
+        hours: document.getElementById('hours'),
+        minutes: document.getElementById('minutes'),
+        seconds: document.getElementById('seconds'),
+        titleControls: document.getElementById('title-controls'),
+        timeControls: document.getElementById('time-controls'),
+        gradient: document.getElementById('gradient'),
+        videoBg: document.getElementById('videoBg'),
+        videoToggle: document.getElementById('video-toggle'),
+        videoYes: document.getElementById('video-yes'),
+        videoNo: document.getElementById('video-no'),
+        videoControls: document.getElementById('video-controls'),
+        videoInput: document.getElementById('video-url'),
+        videoBtn: document.getElementById('video-btn'),
+      };
+
+      const pad = n => String(n).padStart(2,'0');
+      let targetMs = null, timer = null;
+
+      function setTitle(){ const t=(el.titleInput.value||'').trim(); el.headline.textContent=t; el.titleControls.style.display='none'; }
+      function setTime(){ const val=el.timeInput.value; if(!val){ alert('Select a time'); return; } const [hh,mm]=val.split(':').map(Number); const now=new Date(); let target=new Date(now.getFullYear(),now.getMonth(),now.getDate(),hh,mm,0,0); if(target.getTime()<=now.getTime()) target.setDate(target.getDate()+1); targetMs=target.getTime(); el.timeControls.style.display='none'; startCountdown(); }
+      function startCountdown(){ el.countdown.style.display='block'; el.starting.style.display='none'; clearInterval(timer); timer=setInterval(tick,250); tick(); }
+      function tick(){ if(targetMs==null) return; const diff=Math.max(0,targetMs-Date.now()); const total=Math.floor(diff/1000); const h=Math.floor(total/3600); const m=Math.floor((total%3600)/60); const s=total%60; el.hours.textContent=pad(h); el.minutes.textContent=pad(m); el.seconds.textContent=pad(s); if(diff===0){ clearInterval(timer); el.countdown.style.display='none'; el.starting.style.display='block'; } }
+
+      el.titleBtn.addEventListener('click', setTitle);
+      el.timeBtn.addEventListener('click', setTime);
+
+      // Video background
+      let ytPlayer = null;
+      function loadYT(){ if(window.YT) return; const s=document.createElement('script'); s.src='https://www.youtube.com/iframe_api'; document.head.appendChild(s); }
+      window.onYouTubeIframeAPIReady = function(){};
+
+      function extractVideoId(url){ if (!url) return null; const m = url.match(/[?&]v=([^&#]+)/) || url.match(/youtu\.be\/([^?&#/]+)/) || url.match(/embed\/([^?&#/]+)/); return m ? m[1] : null; }
+      function setVideo(){
+        const id = extractVideoId((el.videoInput.value||'').trim());
+        if(!id){ alert('Invalid YouTube URL'); return; }
+        if (!ytPlayer){
+          ytPlayer = new YT.Player('player',{
+            videoId:id,
+            playerVars:{ autoplay:1, controls:0, disablekb:1, fs:0, iv_load_policy:3, modestbranding:1, playsinline:1, rel:0, loop:1, playlist:id, mute:1 },
+            events:{ onReady:(e)=>{ try{ e.target.mute(); e.target.playVideo(); }catch(_){ } } }
+          });
+        } else { ytPlayer.loadVideoById(id); }
+        el.videoControls.style.display='none';
+        el.videoBg.style.display='block';
+      }
+      el.videoBtn.addEventListener('click', setVideo);
+
+      // Handle Yes/No buttons
+      el.videoYes.addEventListener('click',()=>{
+        el.videoToggle.style.display='none';
+        el.videoControls.style.display='inline-flex';
+        loadYT();
+      });
+      el.videoNo.addEventListener('click',()=>{
+        el.videoToggle.style.display='none';
+        el.videoControls.style.display='none';
+        el.videoBg.style.display='none';
+        if(ytPlayer) { try{ ytPlayer.pauseVideo(); }catch(_){} }
+      });
+    </script>
+  </body>
+</html>

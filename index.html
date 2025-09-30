@@ -13,22 +13,16 @@
         align-items: center;
         justify-content: center;
         flex-direction: column;
-        background: #000;
+        background: #173D9F;
         color: #fff;
         font-family: Arial, Helvetica, sans-serif;
         text-align: center;
         overflow: hidden;
       }
 
-      .gradient-bg {
+      #particles-js {
         position: fixed; inset: 0; z-index: -2;
-        background: linear-gradient(135deg, #163C9F, #5EB3DB);
-        background-size: 200% 200%;
-        animation: gradientShift 12s ease-in-out infinite alternate;
-      }
-      @keyframes gradientShift {
-        0% { background-position: 0% 0%; }
-        100% { background-position: 100% 100%; }
+        background: #173D9F;
       }
 
       .video-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; display: none; }
@@ -58,7 +52,7 @@
     </style>
   </head>
   <body>
-    <div class="gradient-bg" id="gradient"></div>
+    <div id="particles-js"></div>
     <div class="video-bg" id="videoBg"><div id="player"></div></div>
 
     <div class="wrap">
@@ -110,6 +104,7 @@
 
     <img id="logo" src="logo.png" alt="CenterWell" />
 
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
     <script>
       const el = {
         headline: document.getElementById('headline'),
@@ -124,7 +119,6 @@
         seconds: document.getElementById('seconds'),
         titleControls: document.getElementById('title-controls'),
         timeControls: document.getElementById('time-controls'),
-        gradient: document.getElementById('gradient'),
         videoBg: document.getElementById('videoBg'),
         videoToggle: document.getElementById('video-toggle'),
         videoYes: document.getElementById('video-yes'),
@@ -136,6 +130,40 @@
 
       const pad = n => String(n).padStart(2,'0');
       let targetMs = null, timer = null;
+
+      function initParticles(){
+        if (!window.particlesJS) {
+          setTimeout(initParticles, 50);
+          return;
+        }
+
+        particlesJS('particles-js', {
+          particles: {
+            number: { value: 80, density: { enable: true, value_area: 800 } },
+            color: { value: ['#5EB3DB', '#ffffff', '#163C9F'] },
+            shape: { type: 'circle' },
+            opacity: { value: 0.6, random: true },
+            size: { value: 3, random: true },
+            line_linked: { enable: true, distance: 140, color: '#48A0D3', opacity: 0.45, width: 1 },
+            move: { enable: true, speed: 1.6, direction: 'none', random: false, straight: false, out_mode: 'out', attract: { enable: false } }
+          },
+          interactivity: {
+            detect_on: 'window',
+            events: {
+              onhover: { enable: true, mode: 'repulse' },
+              onclick: { enable: false },
+              resize: true
+            },
+            modes: {
+              grab: { distance: 180, line_linked: { opacity: 0.7 } },
+              repulse: { distance: 260, duration: 0.7 }
+            }
+          },
+          retina_detect: true
+        });
+      }
+
+      initParticles();
 
       function setTitle(){ const t=(el.titleInput.value||'').trim(); el.headline.textContent=t; el.titleControls.style.display='none'; }
       function setTime(){ const val=el.timeInput.value; if(!val){ alert('Select a time'); return; } const [hh,mm]=val.split(':').map(Number); const now=new Date(); let target=new Date(now.getFullYear(),now.getMonth(),now.getDate(),hh,mm,0,0); if(target.getTime()<=now.getTime()) target.setDate(target.getDate()+1); targetMs=target.getTime(); el.timeControls.style.display='none'; startCountdown(); }

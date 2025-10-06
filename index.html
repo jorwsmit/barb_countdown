@@ -43,8 +43,41 @@
       .controls input[type="text"], .controls input[type="time"] { padding: 8px 10px; border-radius: 6px; border: none; }
       .controls button { padding: 8px 14px; border: none; border-radius: 6px; background: #0099ff; color: #fff; font-weight: bold; cursor: pointer; }
 
+      .profile { display: flex; flex-direction: column; align-items: center; gap: 12px; }
       .profile img { width: 200px; border-radius: 12px; box-shadow: 0 10px 22px rgba(0,0,0,0.7); }
-      .profile h3, .profile h2 { margin: 8px 0 0; }
+      .profile img.hidden { display: none; }
+      .profile h3, .profile h2 { margin: 4px 0 0; min-height: 1.2em; }
+
+      .image-dropzone {
+        width: 230px;
+        padding: 18px;
+        border: 2px dashed rgba(255,255,255,0.4);
+        border-radius: 12px;
+        background: rgba(0,0,0,0.28);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        transition: border-color 0.2s ease, background 0.2s ease;
+      }
+      .image-dropzone.dragover { border-color: #5EB3DB; background: rgba(0,0,0,0.5); }
+      .image-dropzone p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.85); }
+      .image-dropzone button {
+        padding: 8px 14px;
+        border: none;
+        border-radius: 6px;
+        background: #00c6ff;
+        color: #fff;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      .image-dropzone.image-set {
+        border: none;
+        background: transparent;
+        padding: 0;
+      }
+      .image-dropzone.image-set p,
+      .image-dropzone.image-set button { display: none; }
 
       #countdown ul { display: flex; justify-content: center; gap: 30px; list-style: none; padding: 0; }
       #countdown li span { display: block; font-size: 56px; font-weight: 900; }
@@ -64,10 +97,27 @@
         <button id="title-btn">Set</button>
       </div>
 
+      <div id="name-controls" class="controls">
+        <label>Presenter Name:</label>
+        <input type="text" id="presenter-name-input" placeholder="Enter name" />
+        <button id="presenter-name-btn">Set</button>
+      </div>
+
+      <div id="role-controls" class="controls">
+        <label>Presenter Title:</label>
+        <input type="text" id="presenter-role-input" placeholder="Enter title" />
+        <button id="presenter-role-btn">Set</button>
+      </div>
+
       <div class="profile">
-        <img src="me.jpeg" alt="Presenter" />
-        <h3><b>Barb Hughes</b></h3>
-        <h2>AVP Sales and Leadership Development</h2>
+        <div class="image-dropzone" id="image-dropzone">
+          <img id="profile-img" class="hidden" alt="Presenter" />
+          <p>Drag & drop an image here</p>
+          <button type="button" id="image-select-btn">Choose File</button>
+          <input type="file" id="profile-image-input" accept="image/*" hidden />
+        </div>
+        <h2 id="presenter-name" class="empty"></h2>
+        <h3 id="presenter-role" class="empty"></h3>
       </div>
 
       <div id="time-controls" class="controls">
@@ -126,6 +176,18 @@
         videoControls: document.getElementById('video-controls'),
         videoInput: document.getElementById('video-url'),
         videoBtn: document.getElementById('video-btn'),
+        nameControls: document.getElementById('name-controls'),
+        nameInput: document.getElementById('presenter-name-input'),
+        nameBtn: document.getElementById('presenter-name-btn'),
+        nameDisplay: document.getElementById('presenter-name'),
+        roleControls: document.getElementById('role-controls'),
+        roleInput: document.getElementById('presenter-role-input'),
+        roleBtn: document.getElementById('presenter-role-btn'),
+        roleDisplay: document.getElementById('presenter-role'),
+        imageDropzone: document.getElementById('image-dropzone'),
+        imageInput: document.getElementById('profile-image-input'),
+        imageBtn: document.getElementById('image-select-btn'),
+        imageDisplay: document.getElementById('profile-img'),
       };
 
       const pad = n => String(n).padStart(2,'0');
@@ -172,6 +234,73 @@
 
       el.titleBtn.addEventListener('click', setTitle);
       el.timeBtn.addEventListener('click', setTime);
+
+      function setPresenterName(){
+        const name=(el.nameInput.value||'').trim();
+        el.nameDisplay.textContent = name;
+        el.nameDisplay.classList.toggle('empty', name === '');
+        el.nameControls.style.display='none';
+      }
+      function setPresenterRole(){
+        const role=(el.roleInput.value||'').trim();
+        el.roleDisplay.textContent = role;
+        el.roleDisplay.classList.toggle('empty', role === '');
+        el.roleControls.style.display='none';
+      }
+
+      function handleImageFile(file){
+        if(!file) return;
+        if(!(file.type||'').startsWith('image/')){ alert('Please select an image file.'); return; }
+        const reader = new FileReader();
+        reader.onload = evt => {
+          if(evt.target && typeof evt.target.result === 'string'){
+            el.imageDisplay.src = evt.target.result;
+            el.imageDisplay.classList.remove('hidden');
+            el.imageDropzone.classList.add('image-set');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function handleImageInput(event){ const file = event.target.files && event.target.files[0]; handleImageFile(file); event.target.value=''; }
+
+      function enableEnterSubmit(input, handler){ input.addEventListener('keydown', ev=>{ if(ev.key==='Enter'){ handler(); } }); }
+
+      function allowEditingAgain(displayEl, controlsEl, inputEl){
+        displayEl.title = 'Double-click to edit';
+        displayEl.style.cursor = 'pointer';
+        displayEl.addEventListener('dblclick', ()=>{
+          controlsEl.style.display='inline-flex';
+          inputEl.value = displayEl.textContent.trim();
+          setTimeout(()=> inputEl.focus(), 0);
+        });
+      }
+
+      el.nameBtn.addEventListener('click', setPresenterName);
+      el.roleBtn.addEventListener('click', setPresenterRole);
+      el.imageBtn.addEventListener('click', ()=> el.imageInput.click());
+      el.imageInput.addEventListener('change', handleImageInput);
+
+      enableEnterSubmit(el.nameInput, setPresenterName);
+      enableEnterSubmit(el.roleInput, setPresenterRole);
+      allowEditingAgain(el.nameDisplay, el.nameControls, el.nameInput);
+      allowEditingAgain(el.roleDisplay, el.roleControls, el.roleInput);
+
+      ['dragenter','dragover'].forEach(type=>{
+        el.imageDropzone.addEventListener(type, ev=>{ ev.preventDefault(); ev.stopPropagation(); el.imageDropzone.classList.add('dragover'); });
+      });
+      ['dragleave','dragend'].forEach(type=>{
+        el.imageDropzone.addEventListener(type, ev=>{ ev.preventDefault(); ev.stopPropagation(); el.imageDropzone.classList.remove('dragover'); });
+      });
+      el.imageDropzone.addEventListener('drop', ev=>{
+        ev.preventDefault(); ev.stopPropagation();
+        el.imageDropzone.classList.remove('dragover');
+        const file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+        handleImageFile(file);
+      });
+      el.imageDropzone.addEventListener('click', ev=>{
+        if(ev.target === el.imageDropzone || ev.target === el.imageDisplay){ el.imageInput.click(); }
+      });
 
       // Video background
       let ytPlayer = null;
